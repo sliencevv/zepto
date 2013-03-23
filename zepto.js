@@ -664,9 +664,11 @@ var Zepto = (function() {
       })
       return this
     },
+	//clone node
     clone: function(){
       return this.map(function(){ return this.cloneNode(true) })
     },
+	//隐藏集合
     hide: function(){
       return this.css("display", "none")
     },
