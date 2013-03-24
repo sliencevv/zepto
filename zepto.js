@@ -675,16 +675,27 @@ var Zepto = (function() {
     toggle: function(setting){
       return this.each(function(){
         var el = $(this)
+		/* 
+			这个setting取得作用就是控制显示与隐藏，并不切换，当它的值为true时，一直显示，false时，一直隐藏
+			这个地方的判断看上去有点绕，其实也简单，意思是说，当不给toogle参数时，根据元素的display是否等于none来决定显示或者隐藏元素
+			当给toogle参数，就没有切换效果了，只是简单的根据参数值来决定显示或隐藏。如果参数true,相当于show方法，false则相当于hide方法
+		*/
         ;(setting === undefined ? el.css("display") == "none" : setting) ? el.show() : el.hide()
       })
     },
     prev: function(selector){ return $(this.pluck('previousElementSibling')).filter(selector || '*') },
     next: function(selector){ return $(this.pluck('nextElementSibling')).filter(selector || '*') },
+	//当有参数时，设置集合每条记录的HTML，没有参数时，则为获取集合第一条记录的HTML，如果集合的长度为0,则返回null
     html: function(html){
       return html === undefined ?
+		//参数html不存在时，获取集合中第一条记录的html
         (this.length > 0 ? this[0].innerHTML : null) :
+		//否则遍历集合，设置每条记录的html
         this.each(function(idx){
+		  //记录原始的innerHTMl
           var originHtml = this.innerHTML
+		  //如果参数html是字符串直接插入到记录中，
+		  //如果是函数，则将当前记录作为上下文，调用该函数，且传入该记录的索引和原始innerHTML作为参数
           $(this).empty().append( funcArg(this, html, idx, originHtml) )
         })
     },
@@ -695,11 +706,17 @@ var Zepto = (function() {
     },
     attr: function(name, value){
       var result
+	  //当只有name且为字符串时，表示获取第一条记录的属性
       return (typeof name == 'string' && value === undefined) ?
+		//集合没有记录或者集合的元素不是node类型，返回undefined
         (this.length == 0 || this[0].nodeType !== 1 ? undefined :
+			//如果取的是input的value
           (name == 'value' && this[0].nodeName == 'INPUT') ? this.val() :
+		  //注意直接定义在node上的属性，在标准浏览器和ie9,10中用getAttribute取不到,得到的结果是null
+		  //比如div.aa = 10,用div.getAttribute('aa')得到的是null,需要用div.aa或者div['aa']这样来取
           (!(result = this[0].getAttribute(name)) && name in this[0]) ? this[0][name] : result
         ) :
+		//有两个参数时为设置
         this.each(function(idx){
           if (this.nodeType !== 1) return
           if (isObject(name)) for (key in name) setAttribute(this, key, name[key])
@@ -722,6 +739,7 @@ var Zepto = (function() {
     },
     val: function(value){
       return (value === undefined) ?
+	    //如果是多选的select，则返回一个包含被选中的option的值的数组
         (this[0] && (this[0].multiple ?
            $(this[0]).find('option').filter(function(o){ return this.selected }).pluck('value') :
            this[0].value)
@@ -733,18 +751,23 @@ var Zepto = (function() {
     offset: function(coordinates){
       if (coordinates) return this.each(function(index){
         var $this = $(this),
+			//coordinates为{}时直接返回，为函数时返回处理结果给coords
             coords = funcArg(this, coordinates, index, $this.offset()),
+			//取父级的offset
             parentOffset = $this.offsetParent().offset(),
+			//计算出它们之间的差，得出其偏移量
             props = {
               top:  coords.top  - parentOffset.top,
               left: coords.left - parentOffset.left
             }
-
+		//注意元素的position为static时，设置top,left是无效的
         if ($this.css('position') == 'static') props['position'] = 'relative'
         $this.css(props)
       })
+	  //取第一条记录的offset,包括offsetTop,offsetLeft,offsetWidth,offsetHeight
       if (this.length==0) return null
       var obj = this[0].getBoundingClientRect()
+	  //window.pageYOffset就是类似Math.max(document.documentElement.scrollTop||document.body.scrollTop)
       return {
         left: obj.left + window.pageXOffset,
         top: obj.top + window.pageYOffset,
@@ -753,30 +776,37 @@ var Zepto = (function() {
       }
     },
     css: function(property, value){
+	  //获取指定的样式
       if (arguments.length < 2 && typeof property == 'string')
         return this[0] && (this[0].style[camelize(property)] || getComputedStyle(this[0], '').getPropertyValue(property))
-
+	  //设置样式
       var css = ''
       if (type(property) == 'string') {
-        if (!value && value !== 0)
+        if (!value && value !== 0)//当value的值为非零的可以转成false的值时，删掉property样式
           this.each(function(){ this.style.removeProperty(dasherize(property)) })
         else
           css = dasherize(property) + ":" + maybeAddPx(property, value)
       } else {
+	    //当property是对象时
         for (key in property)
           if (!property[key] && property[key] !== 0)
+		    //当property[key]的值为非零的可以转成false的值时，删掉key样式
             this.each(function(){ this.style.removeProperty(dasherize(key)) })
           else
             css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
       }
-
+      //设置
       return this.each(function(){ this.style.cssText += ';' + css })
     },
     index: function(element){
+	  //这里的$(element)[0]是为了将字符串转成node,因为this是个包含node的数组
+	  //当不指定element时，取集合中第一条记录在其父节点的位置
+	  //this.parent().children().indexOf(this[0])这句很巧妙，和取第一记录的parent().children().indexOf(this)相同
       return element ? this.indexOf($(element)[0]) : this.parent().children().indexOf(this[0])
     },
     hasClass: function(name){
       return emptyArray.some.call(this, function(el){
+	    //注意这里的this是classRE(name)生成的正则
         return this.test(className(el))
       }, classRE(name))
     },
@@ -784,6 +814,7 @@ var Zepto = (function() {
       return this.each(function(idx){
         classList = []
         var cls = className(this), newName = funcArg(this, name, idx, cls)
+		//处理同时多个类的情况，用空格分开
         newName.split(/\s+/g).forEach(function(klass){
           if (!$(this).hasClass(klass)) classList.push(klass)
         }, this)
@@ -856,8 +887,11 @@ var Zepto = (function() {
   ;['width', 'height'].forEach(function(dimension){
     $.fn[dimension] = function(value){
       var offset, el = this[0],
+	    //将width,hegiht转成Width,Height，用于取window或者document的width和height
         Dimension = dimension.replace(/./, function(m){ return m[0].toUpperCase() })
+	  //没有参数为获取，获取window的width和height用innerWidth,innerHeight
       if (value === undefined) return isWindow(el) ? el['inner' + Dimension] :
+		//获取document的width和height时，用offsetWidth,offsetHeight
         isDocument(el) ? el.documentElement['offset' + Dimension] :
         (offset = this.offset()) && offset[dimension]
       else return this.each(function(idx){
@@ -884,13 +918,13 @@ var Zepto = (function() {
             return argType == "object" || argType == "array" || arg == null ?
               arg : zepto.fragment(arg)
           }),
-          parent, copyByClone = this.length > 1
+          parent, copyByClone = this.length > 1 //如果集合的长度大于集，则需要clone被插入的节点
       if (nodes.length < 1) return this
 
       return this.each(function(_, target){
         parent = inside ? target : target.parentNode
 
-        // convert all methods to a "before" operation
+		//通过改变target将after，prepend，append操作转成before操作，insertBefore的第二个参数为null时等于appendChild操作
         target = operatorIndex == 0 ? target.nextSibling :
                  operatorIndex == 1 ? target.firstChild :
                  operatorIndex == 2 ? target :
@@ -899,7 +933,8 @@ var Zepto = (function() {
         nodes.forEach(function(node){
           if (copyByClone) node = node.cloneNode(true)
           else if (!parent) return $(node).remove()
-
+			
+		  //插入节点后，如果被插入的节点是SCRIPT，则执行里面的内容并将window设为上下文
           traverseNode(parent.insertBefore(node, target), function(el){
             if (el.nodeName != null && el.nodeName.toUpperCase() === 'SCRIPT' &&
                (!el.type || el.type === 'text/javascript') && !el.src)
