@@ -1019,12 +1019,16 @@ window.Zepto = Zepto
 
 })(Zepto)
 
+/* 
+事件处理部份
+ */
 ;(function($){
   var $$ = $.zepto.qsa, handlers = {}, _zid = 1, specialEvents={},
       hover = { mouseenter: 'mouseover', mouseleave: 'mouseout' }
 
   specialEvents.click = specialEvents.mousedown = specialEvents.mouseup = specialEvents.mousemove = 'MouseEvents'
 
+  //取element的唯一标示符，如果没有，则设置一个并返回
   function zid(element) {
     return element._zid || (element._zid = _zid++)
   }
@@ -1039,25 +1043,28 @@ window.Zepto = Zepto
         && (!selector || handler.sel == selector)
     })
   }
+  //解析事件类型，返回一个包含事件名称和事件命名空间的对象
   function parse(event) {
     var parts = ('' + event).split('.')
     return {e: parts[0], ns: parts.slice(1).sort().join(' ')}
   }
+  //生成命名空间的正则
   function matcherFor(ns) {
     return new RegExp('(?:^| )' + ns.replace(' ', ' .* ?') + '(?: |$)')
   }
-
+  
   function eachEvent(events, fn, iterator){
     if ($.type(events) != "string") $.each(events, iterator)
     else events.split(/\s/).forEach(function(type){ iterator(type, fn) })
   }
-
+  //通过给focus和blur事件设置为捕获来达到事件冒泡的目的
   function eventCapture(handler, captureSetting) {
     return handler.del &&
       (handler.e == 'focus' || handler.e == 'blur') ||
       !!captureSetting
   }
-
+  
+  //修复不支持mouseenter和mouseleave的情况
   function realEvent(type) {
     return hover[type] || type
   }
