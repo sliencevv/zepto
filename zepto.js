@@ -740,7 +740,7 @@ var Zepto = (function() {
     wrapInner: function(structure) {
       var func = isFunction(structure)
       return this.each(function(index) {
-        //原理就是获取节点的内容，然后将structure将内容包起来，如果内容不存在，则直接将structure append到该节点
+        //原理就是获取节点的内容，然后用structure将内容包起来，如果内容不存在，则直接将structure append到该节点
         var self = $(this),
           contents = self.contents(),
           dom = func ? structure.call(this, index) : structure
@@ -796,6 +796,8 @@ var Zepto = (function() {
       })
     },
     text: function(text) {
+      //如果不给定text参数，则为获取功能，集合长度大于0时，取第一条数据的textContent，否则返回null,
+      //如果给定text参数，则为集合的每一条数据设置textContent为text
       return text === undefined ? (this.length > 0 ? this[0].textContent : null) : this.each(function() {
         this.textContent = text
       })
@@ -811,24 +813,29 @@ var Zepto = (function() {
       //注意直接定义在node上的属性，在标准浏览器和ie9,10中用getAttribute取不到,得到的结果是null
       //比如div.aa = 10,用div.getAttribute('aa')得到的是null,需要用div.aa或者div['aa']这样来取
       (!(result = this[0].getAttribute(name)) && name in this[0]) ? this[0][name] : result) :
-      //有两个参数时为设置
       this.each(function(idx) {
         if (this.nodeType !== 1) return
+        //如果name是一个对象，如{'id':'test','value':11},则给数据设置属性
         if (isObject(name)) for (key in name) setAttribute(this, key, name[key])
+        //如果name只是一个普通的属性字符串，用funcArg来处理value是值或者function的情况最终返回一个属性值
+        //如果funcArg函数返回的是undefined或者null，则相当于删除元素的属性
         else setAttribute(this, name, funcArg(this, value, idx, this.getAttribute(name)))
       })
     },
     removeAttr: function(name) {
       return this.each(function() {
-        this.nodeType === 1 && setAttribute(this, name)
+        this.nodeType === 1 && setAttribute(this, name)//setAttribute的第三个参数为null时，效果是删除name属性
       })
     },
+    //获取第一条数据的指定的name属性或者给每条数据添加自定义属性，注意和setAttribute的区别
     prop: function(name, value) {
+      //没有给定value时，为获取，给定value则给每一条数据添加，value可以为值也可以是一个返回值的函数
       return (value === undefined) ? (this[0] && this[0][name]) : this.each(function(idx) {
         this[name] = funcArg(this, value, idx, this[name])
       })
     },
     data: function(name, value) {
+      //通过调用attr方法来实现获取与设置的效果，注意attr方法里，当value存在的时候，返回的是集合本身，如果不存在，则是返回获取的值
       var data = this.attr('data-' + dasherize(name), value)
       return data !== null ? deserializeValue(data) : undefined
     },
@@ -874,8 +881,9 @@ var Zepto = (function() {
       //设置样式
       var css = ''
       if (type(property) == 'string') {
-        if (!value && value !== 0) //当value的值为非零的可以转成false的值时，删掉property样式
+        if (!value && value !== 0) //当value的值为非零的可以转成false的值时如(null,undefined)，删掉property样式
         this.each(function() {
+          //style.removeProperty 移除指定的CSS样式名(IE不支持DOM的style方法)
           this.style.removeProperty(dasherize(property))
         })
         else css = dasherize(property) + ":" + maybeAddPx(property, value)
@@ -1058,12 +1066,12 @@ var Zepto = (function() {
   $.zepto = zepto
 
   return $
-})()
+})();
 
-window.Zepto = Zepto '$' in window || (window.$ = Zepto)
+window.Zepto = Zepto;
+'$' in window || (window.$ = Zepto);
 
-;
-(function($) {
+;(function($) {
   function detect(ua) {
     var os = this.os = {}, browser = this.browser = {},
     webkit = ua.match(/WebKit\/([\d.]+)/),
